@@ -33,6 +33,7 @@ class _ProfileViewState extends State<ProfileView> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Biometría deshabilitada')));
     } else {
+      
       await LocalStorageService.setBiometricEnabled(true);
       ScaffoldMessenger.of(
         context,

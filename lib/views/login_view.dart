@@ -36,10 +36,10 @@ class _LoginViewState extends State<LoginView> {
     var password = _passwordController.text.trim();
 
     if (biometricEnabled) {
-      username = await LocalStorageService.getUsername() ?? username;
-      password = await LocalStorageService.getPassword() ?? password;
+      username = await SecureStorageService.getUsername() ?? username;
+      password = await SecureStorageService.getPassword() ?? password;
       print('Username: $username, Password: $password');
-    }else {
+    } else {
       _showError('Por favor, completa todos los campos');
     }
     final result = await AuthService.login(username, password);
@@ -47,7 +47,9 @@ class _LoginViewState extends State<LoginView> {
 
     if (result != null) {
       final userId = result['userId'];
-      await SecureStorageService.saveCredentials(username, password);
+
+      await LocalStorageService.saveUsername(username);
+      await LocalStorageService.savePassword(password);
       await LocalStorageService.saveToken(result['token']);
       await LocalStorageService.saveUserId(userId);
 
@@ -56,8 +58,8 @@ class _LoginViewState extends State<LoginView> {
         if (authenticated) {
           final success = await AuthService.biometricLogin(userId);
           if (success) {
-            await LocalStorageService.saveUsername(username);
-            await LocalStorageService.savePassword(password);
+            await SecureStorageService.savePassword(password);
+            await SecureStorageService.saveUsername(username);
             Navigator.pushReplacementNamed(context, '/profile');
           } else {
             _showError('Error al obtener token biométrico');
@@ -121,7 +123,7 @@ class _LoginViewState extends State<LoginView> {
                 if (biometricEnabled)
                   ElevatedButton(
                     style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all(Colors.green),
+                      backgroundColor: WidgetStateProperty.all(Colors.green),
                     ),
                     onPressed: () {
                       _login();
