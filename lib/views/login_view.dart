@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_fingerprint2/services/auth_service.dart';
 import 'package:flutter_fingerprint2/services/local_storage_service.dart';
+import 'package:flutter_fingerprint2/services/secure_storage_service.dart';
 import 'package:flutter_fingerprint2/utils/biometric_helper.dart';
 import 'package:flutter_fingerprint2/views/biometric_view.dart';
 
@@ -30,49 +31,57 @@ class _LoginViewState extends State<LoginView> {
     });
   }
 
-Future<void> _login() async {
-  final username = _usernameController.text.trim();
-  final password = _passwordController.text.trim();
-
-  final result = await AuthService.login(username, password);
-
-  if (result != null) {
-    final userId = result['userId'];
-
-    await LocalStorageService.saveToken(result['token']);
-    await LocalStorageService.saveUserId(userId);
+  Future<void> _login() async {
+    var username = _usernameController.text.trim();
+    var password = _passwordController.text.trim();
 
     if (biometricEnabled) {
-      final authenticated = await BiometricHelper.authenticate();
-      if (authenticated) {
-        final success = await AuthService.biometricLogin(userId);
-        if (success) {
-          await LocalStorageService.saveUsername(username);
-          await LocalStorageService.savePassword(password);
-          Navigator.pushReplacementNamed(context, '/profile');
+      username = await LocalStorageService.getUsername() ?? username;
+      password = await LocalStorageService.getPassword() ?? password;
+      print('Username: $username, Password: $password');
+    }else {
+      _showError('Por favor, completa todos los campos');
+    }
+    final result = await AuthService.login(username, password);
+    print(result);
+
+    if (result != null) {
+      final userId = result['userId'];
+      await SecureStorageService.saveCredentials(username, password);
+      await LocalStorageService.saveToken(result['token']);
+      await LocalStorageService.saveUserId(userId);
+
+      if (biometricEnabled) {
+        final authenticated = await BiometricHelper.authenticate();
+        if (authenticated) {
+          final success = await AuthService.biometricLogin(userId);
+          if (success) {
+            await LocalStorageService.saveUsername(username);
+            await LocalStorageService.savePassword(password);
+            Navigator.pushReplacementNamed(context, '/profile');
+          } else {
+            _showError('Error al obtener token biométrico');
+          }
         } else {
-          _showError('Error al obtener token biométrico');
+          _showError('Autenticación biométrica fallida');
         }
       } else {
-        _showError('Autenticación biométrica fallida');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => EnableBiometricView(
+                  userId: userId,
+                  username: username,
+                  password: password,
+                ),
+          ),
+        );
       }
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EnableBiometricView(
-            userId: userId,
-            username: username,
-            password: password,
-          ),
-        ),
-      );
+      _showError('Credenciales incorrectas');
     }
-  } else {
-    _showError('Credenciales incorrectas');
   }
-}
-
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));

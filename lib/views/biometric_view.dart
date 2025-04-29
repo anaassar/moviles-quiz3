@@ -9,7 +9,7 @@ class EnableBiometricView extends StatelessWidget {
   final String password;
 
 
-  const EnableBiometricView({Key? key, required this.userId, required this.username, required this.password}) : super(key: key);
+  const EnableBiometricView({super.key, required this.userId, required this.username, required this.password});
 
   Future<void> _enableBiometrics(BuildContext context) async {
     final authenticated = await BiometricHelper.authenticate();
@@ -50,22 +50,27 @@ class EnableBiometricView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Habilitar biometría')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('¿Deseas habilitar inicio de sesión con biometría?'),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _enableBiometrics(context),
-              child: Text('Sí, habilitar'),
-            ),
-            TextButton(
-              onPressed: () => _skipBiometrics(context),
-              child: Text('No, continuar sin biometría'),
-            ),
-          ],
+      body: Container(
+        color: Colors.white,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('¿Deseas habilitar inicio de sesión con biometría?', style: TextStyle(fontWeight: FontWeight.bold),),
+              SizedBox(height: 20),
+              ElevatedButton(
+                style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all<Color>(Colors.blue),
+                ),
+                onPressed: () => _enableBiometrics(context),
+                child: Text('Sí, habilitar', style: TextStyle(color: Colors.white),),
+              ),
+              TextButton(
+                onPressed: () => _skipBiometrics(context),
+                child: Text('No, continuar sin biometría', style: TextStyle(color: Colors.red),),
+              ),
+            ],
+          ),
         ),
       ),
     );
