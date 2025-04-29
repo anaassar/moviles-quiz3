@@ -1,8 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LocalStorageService {
-
-    static Future<void> saveToken(String token) async {
+  static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('jwt', token);
   }
@@ -11,7 +10,7 @@ class LocalStorageService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('jwt');
   }
-  
+
   static Future<void> setBiometricEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('biometric_enabled', enabled);
@@ -41,5 +40,15 @@ class LocalStorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('biometric_enabled');
     await prefs.remove('user_id');
+  }
+
+  static Future<void> saveUsername(String username) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('username', username);
+  }
+
+  static Future<void> savePassword(String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('password', password);
   }
 }

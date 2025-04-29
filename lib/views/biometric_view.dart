@@ -1,62 +1,71 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_fingerprint2/views/menu_view.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_fingerprint2/services/auth_service.dart';
+import 'package:flutter_fingerprint2/services/local_storage_service.dart';
+import 'package:flutter_fingerprint2/utils/biometric_helper.dart';
 
 class EnableBiometricView extends StatelessWidget {
   final int userId;
+  final String username;
+  final String password;
 
-  const EnableBiometricView({super.key, required this.userId});
 
-  Future<void> _saveBiometricPreference(BuildContext context, bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
+  const EnableBiometricView({Key? key, required this.userId, required this.username, required this.password}) : super(key: key);
 
-    if (enabled) {
-      await prefs.setBool('biometric_enabled', true);
-      await prefs.setInt('user_id', userId);
+  Future<void> _enableBiometrics(BuildContext context) async {
+    final authenticated = await BiometricHelper.authenticate();
+    if (authenticated) {
+      await LocalStorageService.setBiometricEnabled(true);
+
+      final userId = await LocalStorageService.getUserId();
+
+      if (userId != null) {
+        final success = await AuthService.biometricLogin(userId);
+
+        if (success) {
+          await LocalStorageService.saveUsername(username);
+          await LocalStorageService.savePassword(password);
+          await LocalStorageService.setBiometricEnabled(true);
+          Navigator.pushReplacementNamed(context, '/profile');
+        } else {
+          await LocalStorageService.setBiometricEnabled(false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al obtener token biométrico')),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Falló autenticación biométrica')));
     }
+  }
 
-    // Redirige a la vista principal
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const ProfileView()),
-    );
+  Future<void> _skipBiometrics(BuildContext context) async {
+    await LocalStorageService.setBiometricEnabled(false);
+
+    // No se pide nada más, ya tienes el token corto que usarás como si fuera largo
+    Navigator.pushReplacementNamed(context, '/profile');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.deepPurple, Colors.white],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                '¿Deseas habilitar el inicio de sesión con datos biométricos?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(Colors.white),
-                ),
-                onPressed: () => _saveBiometricPreference(context, true),
-                child: const Text('Sí, habilitar', style: TextStyle(color: Colors.black)),
-              ),
-              TextButton(
-                onPressed: () => _saveBiometricPreference(context, false),
-                child: const Text('No, continuar sin biometría', style: TextStyle(color: Colors.black)),
-              ),
-            ],
-          ),
+      appBar: AppBar(title: Text('Habilitar biometría')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('¿Deseas habilitar inicio de sesión con biometría?'),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => _enableBiometrics(context),
+              child: Text('Sí, habilitar'),
+            ),
+            TextButton(
+              onPressed: () => _skipBiometrics(context),
+              child: Text('No, continuar sin biometría'),
+            ),
+          ],
         ),
       ),
     );

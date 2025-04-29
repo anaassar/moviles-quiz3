@@ -3,7 +3,6 @@ import 'package:flutter_fingerprint2/services/auth_service.dart';
 import 'package:flutter_fingerprint2/services/local_storage_service.dart';
 import 'package:flutter_fingerprint2/utils/biometric_helper.dart';
 import 'package:flutter_fingerprint2/views/biometric_view.dart';
-import 'package:flutter_fingerprint2/views/menu_view.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -31,56 +30,49 @@ class _LoginViewState extends State<LoginView> {
     });
   }
 
-  Future<void> _login() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
+Future<void> _login() async {
+  final username = _usernameController.text.trim();
+  final password = _passwordController.text.trim();
 
-    final result = await AuthService.login(username, password);
-    if (result != null) {
-      final userId = result['userId'];
+  final result = await AuthService.login(username, password);
 
-      final alreadyEnabled = await LocalStorageService.isBiometricEnabled();
+  if (result != null) {
+    final userId = result['userId'];
 
-      if (alreadyEnabled) {
-        Navigator.pushReplacementNamed(context, '/profile');
+    await LocalStorageService.saveToken(result['token']);
+    await LocalStorageService.saveUserId(userId);
+
+    if (biometricEnabled) {
+      final authenticated = await BiometricHelper.authenticate();
+      if (authenticated) {
+        final success = await AuthService.biometricLogin(userId);
+        if (success) {
+          await LocalStorageService.saveUsername(username);
+          await LocalStorageService.savePassword(password);
+          Navigator.pushReplacementNamed(context, '/profile');
+        } else {
+          _showError('Error al obtener token biométrico');
+        }
       } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EnableBiometricView(userId: userId),
-          ),
-        );
+        _showError('Autenticación biométrica fallida');
       }
     } else {
-      print(result);
-      _showError('Credenciales incorrectas');
-    }
-  }
-
-  Future<void> _loginWithBiometrics() async {
-    final authenticated = await BiometricHelper.authenticate();
-
-    if (!authenticated) {
-      _showError('Autenticación biométrica fallida');
-      return;
-    }
-
-    final userId = await LocalStorageService.getUserId();
-    if (userId == null) {
-      _showError('No hay usuario registrado para biometría');
-      return;
-    }
-
-    final result = await AuthService.biometricLogin(userId);
-    if (result) {
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const ProfileView()),
+        MaterialPageRoute(
+          builder: (context) => EnableBiometricView(
+            userId: userId,
+            username: username,
+            password: password,
+          ),
+        ),
       );
-    } else {
-      _showError('Login biométrico fallido');
     }
+  } else {
+    _showError('Credenciales incorrectas');
   }
+}
+
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -112,22 +104,24 @@ class _LoginViewState extends State<LoginView> {
                     backgroundColor: WidgetStateProperty.all(Colors.deepPurple),
                   ),
                   onPressed: _login,
-                  child: const Text('Iniciar sesión', style: TextStyle(
-                    color: Colors.white,
-                  ),),
-                ),
-                if (biometricEnabled) ...[
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(Colors.deepPurple),
-                    ),
-                    onPressed: _loginWithBiometrics,
-                    icon: const Icon(Icons.fingerprint, color: Colors.white,),
-                    label: const Text('Iniciar con biometría', style: TextStyle(
-                    color: Colors.white,),)
+                  child: const Text(
+                    'Iniciar sesión',
+                    style: TextStyle(color: Colors.white),
                   ),
-                ],
+                ),
+                if (biometricEnabled)
+                  ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(Colors.green),
+                    ),
+                    onPressed: () {
+                      _login();
+                    },
+                    child: const Text(
+                      'Usar biometría',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
               ],
             ),
           ),

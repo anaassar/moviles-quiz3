@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_fingerprint2/views/biometric_view.dart';
 import 'package:flutter_fingerprint2/views/login_view.dart';
 import 'package:flutter_fingerprint2/views/menu_view.dart';
 
